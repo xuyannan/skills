@@ -1,0 +1,42 @@
+# ============================================
+# RSS Digest - 信息源配置文件示例
+# ============================================
+# 复制此文件为 sources.yaml 并根据需要修改
+# cp sources.example.yaml sources.yaml
+
+# RSS 信息源列表
+sources:
+  - name: "Hacker News - 最新"
+    url: "https://hnrss.org/newest?count=20"
+    type: rss
+
+  - name: "TechCrunch"
+    url: "https://techcrunch.com/feed/"
+    type: rss
+
+  - name: "阮一峰的网络日志"
+    url: "https://www.ruanyifeng.com/blog/atom.xml"
+    type: rss
+
+  # 取消注释以添加更多信息源
+  # - name: "The Verge"
+  #   url: "https://www.theverge.com/rss/index.xml"
+  #   type: rss
+
+# AI 模型配置
+ai:
+  provider: openai                    # openai / azure / custom
+  model: gpt-4o-mini                  # 模型名称
+  # apiKey: sk-your-api-key           # 可选，推荐使用环境变量 OPENAI_API_KEY
+  # baseUrl: https://api.openai.com/v1  # 可选，自定义 API 端点
+
+# 通用设置
+settings:
+  hours: 24                           # 时间范围：最近 N 小时
+  concurrency: 3                      # 并发抓取数量
+  format: markdown                    # 输出格式：markdown / json
+  timeout: 30000                      # 页面抓取超时（毫秒）
+  fetchStrategy: auto                 # 抓取策略：auto / builtin / agent-browser
+  # auto: 先用内置方式，失败后标记供 Agent 降级处理
+  # builtin: 仅用内置方式
+  # agent-browser: 全部由 Agent Browser 处理（需 OpenClaw 环境）
