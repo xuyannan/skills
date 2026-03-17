@@ -58,6 +58,21 @@ program
       const filtered = filterByTime(feedResults, config.settings.hours);
       console.log('');
 
+      // 测试模式：只保留前 5 篇文章
+      if (options.test) {
+        const TEST_ARTICLE_LIMIT = 5;
+        let kept = 0;
+        for (const feed of filtered) {
+          const canTake = Math.max(0, TEST_ARTICLE_LIMIT - kept);
+          if (feed.items.length > canTake) {
+            feed.items = feed.items.slice(0, canTake);
+          }
+          kept += feed.items.length;
+        }
+        console.log(`🧪 测试模式：仅保留 ${kept} 篇文章`);
+        console.log('');
+      }
+
       // 检查是否有文章
       const totalItems = filtered.reduce((sum, f) => sum + f.items.length, 0);
       if (totalItems === 0) {
