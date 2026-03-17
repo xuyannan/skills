@@ -117,9 +117,10 @@ async function summarizeSingle(client, model, article, retries = 2) {
  * @param {Array<object>} feedResults - 附带正文的信息源结果
  * @param {object} aiConfig - AI 配置 { model, apiKey, baseUrl }
  * @param {number} concurrency - 并发数
+ * @param {number} maxArticles - 最大处理文章数，0 为不限制
  * @returns {Array<object>} 附带摘要的信息源结果
  */
-export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) {
+export async function summarizeArticles(feedResults, aiConfig, concurrency = 3, maxArticles = 0) {
   const client = new OpenAI({
     apiKey: aiConfig.apiKey,
     baseURL: aiConfig.baseUrl,
@@ -136,8 +137,15 @@ export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) 
     return feedResults;
   }
 
-  const estimatedMinutes = Math.ceil((totalArticles * API_CALL_INTERVAL / 1000) / 60);
-  console.log(`🤖 开始生成 ${totalArticles} 篇文章的 AI 摘要（模型: ${aiConfig.model}）`);
+  // 如果是测试模式，限制处理数量
+  const isTestMode = maxArticles > 0;
+  const articlesToProcess = isTestMode ? Math.min(totalArticles, maxArticles) : totalArticles;
+
+  const estimatedMinutes = Math.ceil((articlesToProcess * API_CALL_INTERVAL / 1000) / 60);
+  console.log(`🤖 开始生成 ${articlesToProcess} 篇文章的 AI 摘要（模型: ${aiConfig.model}）`);
+  if (isTestMode) {
+    console.log(`   🧪 测试模式：仅处理前 ${maxArticles} 篇`);
+  }
   console.log(`   每次调用间隔 ${API_CALL_INTERVAL / 1000} 秒，预计需要 ${estimatedMinutes} 分钟`);
 
   let completed = 0;
@@ -146,9 +154,23 @@ export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) 
 
   // 逐篇处理，每次调用间隔 API_CALL_INTERVAL，防止触发频率限制
   const summarizedResults = [];
+  let processedCount = 0;
+
   for (const feed of feedResults) {
     const summarizedItems = [];
     for (const item of feed.items) {
+      // 测试模式下达到上限，跳过剩余文章
+      if (isTestMode && processedCount >= maxArticles) {
+        summarizedItems.push({
+          ...item,
+          processedTitle: item.title,
+          summary: '（测试模式，已跳过）',
+          summarySuccess: false,
+          summaryError: 'skipped in test mode',
+        });
+        continue;
+      }
+
       // 第一篇不等待，后续每篇等待间隔
       if (completed > 0) {
         await sleep(API_CALL_INTERVAL);
@@ -156,6 +178,7 @@ export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) 
 
       const result = await summarizeSingle(client, aiConfig.model, item);
       completed++;
+      processedCount++;
 
       if (result.success) {
         succeeded++;

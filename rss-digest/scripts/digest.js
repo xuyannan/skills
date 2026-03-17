@@ -30,6 +30,7 @@ program
   .option('--concurrency <n>', '并发抓取数', '3')
   .option('--api-key <key>', 'AI API Key（覆盖环境变量和配置文件）')
   .option('--base-url <url>', 'AI API 端点')
+  .option('--test', '测试模式，仅处理前 3 篇文章的 AI 摘要')
   .action(async (options) => {
     const startTime = Date.now();
 
@@ -37,7 +38,7 @@ program
       // 1. 加载配置
       console.log('');
       console.log('╔══════════════════════════════════════╗');
-      console.log('║        📰 RSS Digest v1.0.0         ║');
+      console.log('║        📰 RSS Digest v1.0.0          ║');
       console.log('╚══════════════════════════════════════╝');
       console.log('');
 
@@ -76,7 +77,8 @@ program
       const withSummary = await summarizeArticles(
         withContent,
         config.ai,
-        config.settings.concurrency
+        config.settings.concurrency,
+        options.test ? 3 : 0
       );
       console.log('');
 
