@@ -2,6 +2,7 @@
 """Convert all HEIC images in a directory to JPG format."""
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -15,7 +16,23 @@ except ImportError:
 pillow_heif.register_heif_opener()
 
 
-MAX_SIZE_BYTES = 1.5 * 1024 * 1024  # 1.5MB
+DEFAULT_MAX_SIZE = 1.5 * 1024 * 1024  # 1.5MB
+
+SIZE_UNITS = {"K": 1024, "M": 1024 * 1024, "G": 1024 * 1024 * 1024}
+
+
+def parse_size(size_str: str) -> float:
+    """Parse human-readable size string (e.g. '500K', '1.5M') to bytes."""
+    match = re.match(r'^([\d.]+)\s*([KMG])?B?$', size_str.strip().upper())
+    if not match:
+        raise argparse.ArgumentTypeError(
+            f"Invalid size format: '{size_str}'. Use formats like 500K, 1.5M, 2M"
+        )
+    value = float(match.group(1))
+    unit = match.group(2)
+    if unit:
+        return value * SIZE_UNITS[unit]
+    return value  # raw bytes if no unit
 
 
 def save_with_size_limit(img: Image.Image, output_path: Path, max_bytes: float) -> None:
@@ -37,7 +54,7 @@ def save_with_size_limit(img: Image.Image, output_path: Path, max_bytes: float) 
         scale -= 0.1
 
 
-def convert_heic_to_jpg(directory: str, output_dir: str = None, delete_original: bool = False) -> None:
+def convert_heic_to_jpg(directory: str, output_dir: str = None, delete_original: bool = False, max_size: float = DEFAULT_MAX_SIZE) -> None:
     """Convert all HEIC files in directory to JPG."""
     dir_path = Path(directory)
     
@@ -66,9 +83,13 @@ def convert_heic_to_jpg(directory: str, output_dir: str = None, delete_original:
         try:
             with Image.open(heic_file) as img:
                 rgb_img = img.convert("RGB")
-                save_with_size_limit(rgb_img, jpg_file, MAX_SIZE_BYTES)
-            size_mb = jpg_file.stat().st_size / (1024 * 1024)
-            print(f"Converted: {heic_file.name} -> {jpg_file.name} ({size_mb:.2f}MB)")
+                save_with_size_limit(rgb_img, jpg_file, max_size)
+            size_kb = jpg_file.stat().st_size / 1024
+            if size_kb >= 1024:
+                size_str = f"{size_kb / 1024:.2f}MB"
+            else:
+                size_str = f"{size_kb:.0f}KB"
+            print(f"Converted: {heic_file.name} -> {jpg_file.name} ({size_str})")
             
             if delete_original:
                 heic_file.unlink()
@@ -83,6 +104,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", help="Output directory (default: <directory>/jpg_output)")
     parser.add_argument("-d", "--delete", action="store_true", 
                         help="Delete original HEIC files after conversion")
+    parser.add_argument("-s", "--max-size", type=parse_size, default=DEFAULT_MAX_SIZE,
+                        help="Max output file size, e.g. 500K, 1.5M (default: 1.5M)")
     args = parser.parse_args()
     
-    convert_heic_to_jpg(args.directory, args.output, args.delete)
+    convert_heic_to_jpg(args.directory, args.output, args.delete, args.max_size)

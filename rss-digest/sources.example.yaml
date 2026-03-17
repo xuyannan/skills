@@ -23,12 +23,35 @@ sources:
   #   url: "https://www.theverge.com/rss/index.xml"
   #   type: rss
 
+# ============================================
 # AI 模型配置
+# ============================================
+# 支持所有 OpenAI 兼容 API，包括 Gemini、DeepSeek、OpenAI 等
+# API Key 优先级：命令行参数 > 环境变量 OPENAI_API_KEY > 配置文件
+
+# --- Google Gemini（推荐，通过 OpenAI 兼容端点）---
 ai:
-  provider: openai                    # openai / azure / custom
-  model: gpt-4o-mini                  # 模型名称
-  # apiKey: sk-your-api-key           # 可选，推荐使用环境变量 OPENAI_API_KEY
-  # baseUrl: https://api.openai.com/v1  # 可选，自定义 API 端点
+  model: gemini-2.0-flash                          # 可选: gemini-2.5-pro, gemini-2.0-flash, gemini-2.0-flash-lite
+  apiKey: YOUR_GEMINI_API_KEY                       # 从 https://aistudio.google.com/apikey 获取
+  baseUrl: https://generativelanguage.googleapis.com/v1beta/openai  # Gemini OpenAI 兼容端点
+
+# --- OpenAI ---
+# ai:
+#   model: gpt-4o-mini                              # 可选: gpt-4o, gpt-4o-mini, gpt-4-turbo
+#   apiKey: sk-your-openai-api-key                  # 或使用环境变量 OPENAI_API_KEY
+#   baseUrl: https://api.openai.com/v1
+
+# --- DeepSeek ---
+# ai:
+#   model: deepseek-chat                            # 可选: deepseek-chat, deepseek-reasoner
+#   apiKey: sk-your-deepseek-api-key
+#   baseUrl: https://api.deepseek.com/v1
+
+# --- 其他 OpenAI 兼容 API ---
+# ai:
+#   model: your-model-name
+#   apiKey: your-api-key
+#   baseUrl: https://your-custom-endpoint/v1
 
 # 通用设置
 settings:

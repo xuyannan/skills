@@ -1,10 +1,17 @@
 import OpenAI from 'openai';
-import pLimit from 'p-limit';
 
 /**
  * AI 摘要生成模块
  * 调用 OpenAI 兼容 API，为每篇文章生成中文摘要和标题翻译
  */
+
+// 内容最大字符数（约 4000 tokens），超出部分截断
+const MAX_CONTENT_LENGTH = 8000;
+
+// API 调用间隔（毫秒），防止触发频率限制
+const API_CALL_INTERVAL = 6000;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const SYSTEM_PROMPT = `你是一位专业的信息摘要助手。你需要根据提供的文章内容完成两个任务：
 
@@ -35,7 +42,7 @@ const SYSTEM_PROMPT = `你是一位专业的信息摘要助手。你需要根据
  * @returns {object} { processedTitle, summary, success, error? }
  */
 async function summarizeSingle(client, model, article, retries = 2) {
-  const content = article.fullContent || article.description || '';
+  let content = article.fullContent || article.description || '';
 
   if (!content || content.trim().length < 20) {
     return {
@@ -44,6 +51,11 @@ async function summarizeSingle(client, model, article, retries = 2) {
       success: false,
       error: '内容不足',
     };
+  }
+
+  // 截断过长内容，避免超出 token 限制
+  if (content.length > MAX_CONTENT_LENGTH) {
+    content = content.substring(0, MAX_CONTENT_LENGTH) + '\n\n[内容已截断，请基于以上部分生成摘要]';
   }
 
   const userMessage = `文章标题：${article.title}\n\n文章内容：\n${content}`;
@@ -113,8 +125,6 @@ export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) 
     baseURL: aiConfig.baseUrl,
   });
 
-  const limit = pLimit(concurrency);
-
   // 统计总数
   let totalArticles = 0;
   feedResults.forEach((feed) => {
@@ -126,42 +136,45 @@ export async function summarizeArticles(feedResults, aiConfig, concurrency = 3) 
     return feedResults;
   }
 
-  console.log(`🤖 开始生成 ${totalArticles} 篇文章的 AI 摘要（模型: ${aiConfig.model}）...`);
+  const estimatedMinutes = Math.ceil((totalArticles * API_CALL_INTERVAL / 1000) / 60);
+  console.log(`🤖 开始生成 ${totalArticles} 篇文章的 AI 摘要（模型: ${aiConfig.model}）`);
+  console.log(`   每次调用间隔 ${API_CALL_INTERVAL / 1000} 秒，预计需要 ${estimatedMinutes} 分钟`);
 
   let completed = 0;
   let succeeded = 0;
   let failed = 0;
 
-  const summarizedResults = await Promise.all(
-    feedResults.map(async (feed) => {
-      const summarizedItems = await Promise.all(
-        feed.items.map((item) =>
-          limit(async () => {
-            const result = await summarizeSingle(client, aiConfig.model, item);
-            completed++;
+  // 逐篇处理，每次调用间隔 API_CALL_INTERVAL，防止触发频率限制
+  const summarizedResults = [];
+  for (const feed of feedResults) {
+    const summarizedItems = [];
+    for (const item of feed.items) {
+      // 第一篇不等待，后续每篇等待间隔
+      if (completed > 0) {
+        await sleep(API_CALL_INTERVAL);
+      }
 
-            if (result.success) {
-              succeeded++;
-            } else {
-              failed++;
-            }
+      const result = await summarizeSingle(client, aiConfig.model, item);
+      completed++;
 
-            process.stdout.write(`\r   进度：${completed}/${totalArticles}  ✅${succeeded}  ❌${failed}`);
+      if (result.success) {
+        succeeded++;
+      } else {
+        failed++;
+      }
 
-            return {
-              ...item,
-              processedTitle: result.processedTitle,
-              summary: result.summary,
-              summarySuccess: result.success,
-              summaryError: result.error || null,
-            };
-          })
-        )
-      );
+      process.stdout.write(`\r   进度：${completed}/${totalArticles}  ✅${succeeded}  ❌${failed}`);
 
-      return { ...feed, items: summarizedItems };
-    })
-  );
+      summarizedItems.push({
+        ...item,
+        processedTitle: result.processedTitle,
+        summary: result.summary,
+        summarySuccess: result.success,
+        summaryError: result.error || null,
+      });
+    }
+    summarizedResults.push({ ...feed, items: summarizedItems });
+  }
 
   console.log(`\n✅ AI 摘要生成完成：成功 ${succeeded}，失败 ${failed}`);
 

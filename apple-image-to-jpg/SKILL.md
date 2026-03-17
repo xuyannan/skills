@@ -18,13 +18,13 @@ description: |
 
 ```bash
 # 转换目录中所有 HEIC 文件
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files
 
 # 指定输出目录
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files -o /output/dir
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files -o /output/dir
 
 # 转换后删除原始文件
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files -d
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files -d
 ```
 
 ## 命令参数
@@ -34,17 +34,23 @@ python3 apple-image-to-jpg/scripts/heic_to_jpg.py /path/to/heic/files -d
 | `directory` | 包含 HEIC 文件的目录路径（必填） |
 | `-o, --output` | 输出目录（默认：`<directory>/jpg_output`） |
 | `-d, --delete` | 转换成功后删除原始 HEIC 文件 |
+| `-s, --max-size` | 输出文件最大大小，如 `500K`、`1.5M`（默认：`1.5M`） |
 
 ## 依赖安装
 
+macOS Homebrew 的 Python 不允许直接安装全局包（PEP 668），需使用虚拟环境：
+
 ```bash
-pip3 install pillow pillow-heif
+# 创建虚拟环境并安装依赖（仅需执行一次）
+cd apple-image-to-jpg
+python3 -m venv .venv
+.venv/bin/pip install pillow pillow-heif
 ```
 
 ## 功能特性
 
 - **批量转换**：自动扫描并转换目录下所有 `.HEIC` 和 `.heic` 文件
-- **大小优化**：自动调整质量确保输出文件不超过 1.5MB
+- **大小控制**：支持通过 `-s` 参数指定输出文件大小上限（如 `500K`、`1.5M`），默认 1.5MB
 - **智能缩放**：当质量调整无法满足大小要求时，自动缩放图片
 - **安全删除**：可选在转换成功后删除原始文件
 - **自定义输出**：支持指定输出目录
@@ -55,20 +61,20 @@ pip3 install pillow pillow-heif
 
 ```bash
 # 转换 ~/Photos 目录下的所有 HEIC 文件
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos
 # 输出到 ~/Photos/jpg_output/
 ```
 
 ### 指定输出目录
 
 ```bash
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos -o ~/Desktop/converted
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos -o ~/Desktop/converted
 ```
 
 ### 转换并清理原文件
 
 ```bash
-python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos -d
+apple-image-to-jpg/.venv/bin/python3 apple-image-to-jpg/scripts/heic_to_jpg.py ~/Photos -d
 ```
 
 ## 适用场景
